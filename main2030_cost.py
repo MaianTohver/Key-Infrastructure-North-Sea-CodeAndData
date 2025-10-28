@@ -13,32 +13,28 @@ c_permutation = 0.01
 cys = [1995]
 
 data_path = "mes_north_sea/data_" + str(settings.year)
+save_path = "path_to_save_results"
 
 write_to_network_data(settings)
 write_to_technology_data(settings)
 
 scenarios = {
-              # 'Baseline': 'Baseline',
-              # 'Battery_on': 'Battery (onshore only)',
-              # 'Battery_off': 'Battery (offshore only)',
-              # 'Battery_all': 'Battery (all)',
-              # 'Battery_all_HP': 'Battery (all, high power-energy-ratio)',
-              # 'ElectricityGrid_all': 'Grid Expansion (all)',
-              # 'ElectricityGrid_on': 'Grid Expansion (onshore only)',
-              # 'ElectricityGrid_off': 'Grid Expansion (offshore only)',
-              # 'ElectricityGrid_noBorder': 'Grid Expansion (no Border)',
-              # 'Hydrogen_Baseline': 'Hydrogen (all)',
-              # 'Hydrogen_H1': 'Hydrogen (no storage)',
-              # 'Hydrogen_H2': 'Hydrogen (no hydrogen offshore)',
+              'Baseline': 'Baseline',
+              'Battery_on': 'Battery (onshore only)',
+              'Battery_off': 'Battery (offshore only)',
+              'Battery_all': 'Battery (all)',
+              'Battery_all_HP': 'Battery (all, high power-energy-ratio)',
+              'ElectricityGrid_all': 'Grid Expansion (all)',
+              'ElectricityGrid_on': 'Grid Expansion (onshore only)',
+              'ElectricityGrid_off': 'Grid Expansion (offshore only)',
+              'ElectricityGrid_noBorder': 'Grid Expansion (no Border)',
+              'Hydrogen_Baseline': 'Hydrogen (all)',
+              'Hydrogen_H1': 'Hydrogen (no storage)',
+              'Hydrogen_H2': 'Hydrogen (no hydrogen offshore)',
               'Hydrogen_H3': 'Hydrogen (no hydrogen onshore)',
-              # 'Hydrogen_H4': 'Hydrogen (local use only)',
-              # 'All': 'All Pathways'
+              'Hydrogen_H4': 'Hydrogen (local use only)',
+              'All': 'All Pathways'
              }
-
-# scenarios = {'Baseline': 'Baseline',
-#               'All': 'All Pathways'
-#              }
-
 
 for stage in scenarios.keys():
 
@@ -98,14 +94,14 @@ for stage in scenarios.keys():
 
         if settings.test:
             m.data.model_config["reporting"]["save_summary_path"][
-                "value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/20250515/2030_test/"
+                "value"] = save_path + "/2030_test/"
             m.data.model_config["reporting"]["save_path"][
-                "value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/20250515/2030_test/"
+                "value"] = save_path + "/2030_test/"
         else:
             m.data.model_config["reporting"]["save_summary_path"][
-                "value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/20250515/2030/cost/00_cy" + str(settings.climate_year)
+                "value"] = save_path + "/2030/cost/00_cy" + str(settings.climate_year)
             m.data.model_config["reporting"]["save_path"][
-                "value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/20250515/2030/cost/"
+                "value"] = save_path + "/2030/cost/"
         m.data.model_config["reporting"]["case_name"]["value"] = stage + '_costs' + "_cy" + str(settings.climate_year)
 
 

@@ -2,7 +2,7 @@ from pathlib import Path
 from mes_north_sea.optimization.utilities import *
 import random
 
-test = 0
+test = 1
 settings = Settings(test=test)
 settings.demand_factor = 1
 settings.year = 2030
@@ -11,6 +11,7 @@ cys = [2008,2009]
 c_permutation = 0.01
 
 data_path  = "mes_north_sea/data_" + str(settings.year)
+save_path = "path_to_save_results"
 
 write_to_network_data(settings)
 write_to_technology_data(settings)
@@ -21,26 +22,22 @@ emission_targets = [0.99, 0.98, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.
 emission_targets.reverse()
 
 scenarios = {
-    # 'Baseline': 'Baseline',
-    #           'Battery_on': 'Battery (onshore only)',
-    #           'Battery_off': 'Battery (offshore only)',
-    #           'Battery_all': 'Battery (all)',
-    #           'Battery_all_HP': 'Battery (all, high power-energy-ratio)',
-    #           'ElectricityGrid_all': 'Grid Expansion (all)',
-    #           'ElectricityGrid_on': 'Grid Expansion (onshore only)',
-    #           'ElectricityGrid_off': 'Grid Expansion (offshore only)',
-    #           'ElectricityGrid_noBorder': 'Grid Expansion (no Border)',
-    #           'Hydrogen_Baseline': 'Hydrogen (all)',
-    #           'Hydrogen_H1': 'Hydrogen (no storage)',
+    'Baseline': 'Baseline',
+              'Battery_on': 'Battery (onshore only)',
+              'Battery_off': 'Battery (offshore only)',
+              'Battery_all': 'Battery (all)',
+              'Battery_all_HP': 'Battery (all, high power-energy-ratio)',
+              'ElectricityGrid_all': 'Grid Expansion (all)',
+              'ElectricityGrid_on': 'Grid Expansion (onshore only)',
+              'ElectricityGrid_off': 'Grid Expansion (offshore only)',
+              'ElectricityGrid_noBorder': 'Grid Expansion (no Border)',
+              'Hydrogen_Baseline': 'Hydrogen (all)',
+              'Hydrogen_H1': 'Hydrogen (no storage)',
               'Hydrogen_H2': 'Hydrogen (no hydrogen offshore)',
-              # 'Hydrogen_H3': 'Hydrogen (no hydrogen onshore)',
-              # 'Hydrogen_H4': 'Hydrogen (local use only)',
+              'Hydrogen_H3': 'Hydrogen (no hydrogen onshore)',
+              'Hydrogen_H4': 'Hydrogen (local use only)',
               'All': 'All Pathways'
              }
-
-# scenarios = {'Baseline': 'Baseline',
-#               'All': 'All Pathways'
-#              }
 
 for stage in scenarios.keys():
     if stage != 'Baseline':
@@ -103,22 +100,22 @@ for stage in scenarios.keys():
             m.data.model_config["solveroptions"]["threads"]["value"] = 8
             if settings.test:
                 m.data.model_config["reporting"]["save_summary_path"][
-                    "value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/20250515/2030_test/"
+                    "value"] = save_path + "/2030_test/"
                 m.data.model_config["reporting"]["save_path"][
-                    "value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/20250515/2030_test/"
+                    "value"] = save_path + "/2030_test/"
             else:
                 m.data.model_config["reporting"]["save_summary_path"][
-                    "value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/20250515/2030/emission_reduction/00_cy" + str(settings.climate_year)
+                    "value"] = save_path + "/2030/emission_reduction/00_cy" + str(settings.climate_year)
                 m.data.model_config["reporting"]["save_path"][
-                    "value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/20250515/2030/emission_reduction/"
+                    "value"] = save_path + "/2030/emission_reduction/"
 
             m.construct_model()
             m.construct_balances()
             m._define_solver_settings()
 
             # min emissions
-            # m.data.model_config["reporting"]["case_name"]["value"] = stage + '_minE' + "_cy" + str(settings.climate_year)
-            # m._optimize_emissions_net()
+            m.data.model_config["reporting"]["case_name"]["value"] = stage + '_minE' + "_cy" + str(settings.climate_year)
+            m._optimize_emissions_net()
             max_em_reduction = (m.model[m.info_solving_algorithms["aggregation_model"]].var_emissions_net.value + h2_emissions) / baseline_emissions
 
             print(max_em_reduction)

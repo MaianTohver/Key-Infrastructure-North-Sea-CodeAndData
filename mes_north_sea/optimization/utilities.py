@@ -333,10 +333,11 @@ def define_network_topology(input_data_path, settings, nodes):
         network = pd.read_csv(file_path, sep=';')
 
         network_data = {}
-        network_data['size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
-        network_data['distance_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
-        network_data['max_size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
+        network_data['size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
+        network_data['distance_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
+        network_data['max_size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
         network_data['connection_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
+
         for idx, row in network.iterrows():
             if (row.node0 in nodes.all.keys()) & (row.node1 in nodes.all.keys()):
                 network_data['size_matrix'].at[row['node0'], row['node1']] = row['s_nom']*1000

@@ -1,5 +1,6 @@
 import random
 from mes_north_sea.optimization.utilities import *
+from pathlib import Path
 
 test = 1
 settings = Settings(test=test)
@@ -12,6 +13,8 @@ c_permutation = 0.01
 
 data_path = "mes_north_sea/data_" + str(settings.year)
 save_path = "path_to_save_results"
+Path(save_path + "/2040_test/").mkdir(parents=True, exist_ok=True)
+Path(save_path + "/2040/").mkdir(parents=True, exist_ok=True)
 
 
 write_to_network_data(settings)
@@ -51,6 +54,7 @@ for stage in scenarios.keys():
 
     for cy in cys:
         input_data_path = Path(data_path + "_" + str(cy))
+        input_data_path.mkdir(parents=True, exist_ok=True)
 
         for tax in co2_tax:
             settings.co2_tax = tax

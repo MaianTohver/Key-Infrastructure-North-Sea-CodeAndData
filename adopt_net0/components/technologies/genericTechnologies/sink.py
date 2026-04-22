@@ -369,6 +369,43 @@ class Sink(Technology):
             h5_group.create_dataset(
                 "capex_stor_size", data=[model_block.var_capex_stor_size.value]
             )
+    def _define_opex(self, b_tec, data):
+        """
+        Defines variable and fixed OPEX
+
+        :param b_tec: pyomo block with technology model
+        :param dict data: dict containing model information
+        :return: pyomo block with technology model
+        """
+        config = data["config"]
+        economics = self.economics
+        discount_rate = set_discount_rate(config, economics)
+        fraction_of_year_modelled = data["topology"]["fraction_of_year_modelled"]
+        annualization_factor = annualize(
+            discount_rate, economics["lifetime"], fraction_of_year_modelled
+        )
+
+        # VARIABLE OPEX
+        b_tec.del_component(b_tec.const_opex_variable)
+        b_tec.del_component(b_tec.var_opex_variable)
+
+        b_tec.var_opex_variable = pyo.Var(self.set_t_global, domain=pyo.NonNegativeReals)
+
+        def init_opex_variable_sink(const, t):
+            return (self.input[t, self.main_input_carrier] * b_tec.para_opex_variable == b_tec.var_opex_variable[t])
+
+        b_tec.const_opex_variable = pyo.Constraint(self.set_t_global, rule=init_opex_variable_sink)
+
+        # FIXED OPEX
+        b_tec.para_opex_fixed = pyo.Param(
+            domain=pyo.Reals, initialize=economics["opex_fixed"], mutable=True
+        )
+        b_tec.var_opex_fixed = pyo.Var()
+        b_tec.const_opex_fixed = pyo.Constraint(
+            expr=(b_tec.var_capex_aux) * b_tec.para_opex_fixed
+            == b_tec.var_opex_fixed
+        )
+        return b_tec
 
     def _define_ramping_rates(self, b_tec, data):
         """

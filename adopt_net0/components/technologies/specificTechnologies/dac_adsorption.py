@@ -225,7 +225,7 @@ class DacAdsorption(Technology):
         # Comments on the equations refer to the equation numbers in the paper. All equations can be looked up there.
 
         # Transformation required
-        self.big_m_transformation_required = 1
+        self.big_m_transformation_required = 0
 
         # DATA OF TECHNOLOGY
         nr_segments = self.performance_data["nr_segments"]

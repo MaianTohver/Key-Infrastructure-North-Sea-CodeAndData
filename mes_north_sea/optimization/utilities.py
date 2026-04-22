@@ -158,9 +158,9 @@ def define_topology(settings, input_data_path, nodes):
     topology["nodes"] = list(nodes.all.keys())
     # Carriers:
     if settings.model_h2:
-        topology["carriers"] = ['electricity', 'gas', 'hydrogen']
+        topology["carriers"] = ['electricity', 'gas', 'hydrogen','CO2captured','heat']
     else:
-        topology["carriers"] = ['electricity', 'gas']
+        topology["carriers"] = ['electricity', 'gas','CO2captured','heat']
 
     if settings.year == 2040:
         topology["start_date"] = str(2041) + "-" + settings.start_date
@@ -201,8 +201,8 @@ def define_configuration(input_data_path, settings):
     configuration["solveroptions"]["intfeastol"]["value"] = 1e-3
     configuration["solveroptions"]["feastol"]["value"] = 1e-3
 
-    configuration["reporting"]["save_summary_path"]["value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/" + str(settings.year) + "_250423"
-    configuration["reporting"]["save_path"]["value"] = "//Soliscom.uu.nl/geo/USERS/StaffUsers/6574114/EhubResults/MES NorthSea/" + str(settings.year) + "_250423"
+    configuration["reporting"]["save_summary_path"]["value"] = "results/" + str(settings.year) + "/"
+    configuration["reporting"]["save_path"]["value"] = "results/" + str(settings.year) + "/"
 
     configuration["scaling"]["scaling_on"]["value"] = 1
     configuration["scaling"]["scaling_factors"]["energy_vars"]["value"] = 1e-2
@@ -292,7 +292,14 @@ def define_networks(input_data_path, settings):
 
     stage = settings.new_technologies_stage
 
-    # H2 networks
+    # CO2 network
+    if settings.year == 2030 or settings.year == 2040:
+        new_co2_networks = ["CO2_Pipeline"]
+    else:
+        new_co2_networks = []
+
+
+    # H2 network
     if ('Hydrogen' in stage) or (stage == 'All') or (stage == 'All_RE_offshore_only'):
         if stage != 'Hydrogen_H4':
             new_h2_networks = ["hydrogenPipelineOffshore", "hydrogenPipelineOnshore_new", "hydrogenPipelineOnshore_re"]
@@ -317,7 +324,7 @@ def define_networks(input_data_path, settings):
 
     with open(input_data_path / "period1" / "Networks.json", "r") as json_file:
         networks = json.load(json_file)
-    networks["new"] = new_h2_networks + new_el_networks
+    networks["new"] = new_h2_networks + new_el_networks + new_co2_networks
     networks["existing"] = ["electricityAC", "electricityDC"]
 
     with open(input_data_path / "period1" / "Networks.json", "w") as json_file:
@@ -333,11 +340,10 @@ def define_network_topology(input_data_path, settings, nodes):
         network = pd.read_csv(file_path, sep=';')
 
         network_data = {}
-        network_data['size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
-        network_data['distance_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
-        network_data['max_size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
+        network_data['size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
+        network_data['distance_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
+        network_data['max_size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
         network_data['connection_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
-
         for idx, row in network.iterrows():
             if (row.node0 in nodes.all.keys()) & (row.node1 in nodes.all.keys()):
                 network_data['size_matrix'].at[row['node0'], row['node1']] = row['s_nom']*1000
@@ -457,6 +463,22 @@ def define_network_topology(input_data_path, settings, nodes):
         input_data_path / "period1" / "network_topology" / "new" / dc_netw_name / "size_max_arcs.csv",
         sep=";")
 
+    # co2 networks
+    # offshore
+    if settings.year == 2030:
+        file_name = 'pyhub_co2_offshore.csv'
+    elif settings.year == 2040:
+        file_name = 'pyhub_co2_offshore_2040.csv'
+    data = get_network_data(data_path / file_name, nodes)
+    netw_name = "CO2_Pipeline"
+    os.makedirs(input_data_path / "period1" / "network_topology" / "new" / netw_name, exist_ok=True)
+    data['connection_matrix'].to_csv(
+        input_data_path / "period1" / "network_topology" / "new" / netw_name / "connection.csv",
+        sep=";")
+    data['distance_matrix'].to_csv(
+        input_data_path / "period1" / "network_topology" / "new" / netw_name / "distance.csv",
+        sep=";")
+
     # H2 NETWORKS
     # offshore
     if settings.year == 2030:
@@ -563,7 +585,7 @@ def define_capacity_factors(input_data_path, settings):
 
     cfs = {}
     if settings.validation:
-        cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore'{str(2008)}.csv", index_col=0)
+        cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore{str(2008)}.csv", index_col=0)
     else:
         cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore{str(climate_year)}.csv", index_col=0)
     cfs["onshore_wind"] = pd.read_csv(data_path / f"wind_onshore{str(climate_year)}.csv", index_col=0)

@@ -324,7 +324,7 @@ def define_networks(input_data_path, settings):
 
     with open(input_data_path / "period1" / "Networks.json", "r") as json_file:
         networks = json.load(json_file)
-    networks["new"] = new_h2_networks + new_el_networks + new_co2_networks
+    networks["new"] = new_el_networks + new_co2_networks
     networks["existing"] = ["electricityAC", "electricityDC"]
 
     with open(input_data_path / "period1" / "Networks.json", "w") as json_file:

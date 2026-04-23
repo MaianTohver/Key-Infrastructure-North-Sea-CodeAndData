@@ -73,10 +73,12 @@ class HeatPump(Technology):
         # Ambient air temperature
         T = copy.deepcopy(climate_data["temp_air"])
 
+        application = self.performance_data.get("application", None)
+
         # Determine T_out
-        if self.performance_data["application"] == "radiator_heating":
+        if application == "radiator_heating":
             t_out = 40 - T
-        elif self.performance_data["application"] == "floor_heating":
+        elif application == "floor_heating":
             t_out = 30 - 0.5 * T
         else:
             t_out = self.performance_data["T_out"]

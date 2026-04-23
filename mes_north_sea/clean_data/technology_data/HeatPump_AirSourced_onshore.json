@@ -24,7 +24,7 @@
       ]
     },
     "opex_variable": 1.80,
-    "opex_fixed": 0.26,
+    "opex_fixed": 0.0026,
     "discount_rate": 0.1,
     "lifetime": 25,
     "decommission_cost": 0

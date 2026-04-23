@@ -299,14 +299,14 @@ def define_networks(input_data_path, settings):
         new_co2_networks = []
 
 
-    # H2 network
-    if ('Hydrogen' in stage) or (stage == 'All') or (stage == 'All_RE_offshore_only'):
-        if stage != 'Hydrogen_H4':
-            new_h2_networks = ["hydrogenPipelineOffshore", "hydrogenPipelineOnshore_new", "hydrogenPipelineOnshore_re"]
-        else:
-            new_h2_networks = []
-    else:
-        new_h2_networks = []
+    # # H2 network
+    # if ('Hydrogen' in stage) or (stage == 'All') or (stage == 'All_RE_offshore_only'):
+    #     if stage != 'Hydrogen_H4':
+    #         new_h2_networks = ["hydrogenPipelineOffshore", "hydrogenPipelineOnshore_new", "hydrogenPipelineOnshore_re"]
+    #     else:
+    #         new_h2_networks = []
+    # else:
+    #     new_h2_networks = []
 
     # El networks
     new_el_networks = []
@@ -340,10 +340,10 @@ def define_network_topology(input_data_path, settings, nodes):
         network = pd.read_csv(file_path, sep=';')
 
         network_data = {}
-        network_data['size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
-        network_data['distance_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
-        network_data['max_size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
-        network_data['connection_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0)
+        network_data['size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
+        network_data['distance_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
+        network_data['max_size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
+        network_data['connection_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
         for idx, row in network.iterrows():
             if (row.node0 in nodes.all.keys()) & (row.node1 in nodes.all.keys()):
                 network_data['size_matrix'].at[row['node0'], row['node1']] = row['s_nom']*1000
@@ -372,8 +372,6 @@ def define_network_topology(input_data_path, settings, nodes):
     ac_data['size_matrix'].to_csv(
         input_data_path / "period1" / "network_topology" / "existing" / "electricityAC" / "size.csv",
         sep=";")
-
-
 
     if stage == 'ElectricityGrid_on':
         file_name_ac = 'pyhub_el_ac_on.csv'
@@ -463,21 +461,32 @@ def define_network_topology(input_data_path, settings, nodes):
         input_data_path / "period1" / "network_topology" / "new" / dc_netw_name / "size_max_arcs.csv",
         sep=";")
 
-    # co2 networks
-    # offshore
+    # co2 networks merged onshore and offshore
     if settings.year == 2030:
-        file_name = 'pyhub_co2_offshore.csv'
+        file_name_offshore = 'pyhub_co2_offshore.csv'
     elif settings.year == 2040:
-        file_name = 'pyhub_co2_offshore_2040.csv'
-    data = get_network_data(data_path / file_name, nodes)
+        file_name_offshore = 'pyhub_co2_offshore_2040.csv'
+
+    data_offshore = get_network_data(data_path / file_name_offshore, nodes)
+    data_onshore = get_network_data(data_path / 'pyhub_co2_onshore_new.csv', nodes)
+
+    merged_connection = data_offshore['connection_matrix'].combine(
+        data_onshore['connection_matrix'], func=lambda a, b: (a + b).clip(upper=1)
+    )
+    merged_distance = data_offshore['distance_matrix'].combine(
+        data_onshore['distance_matrix'], func=lambda a, b: a + b
+    )
+
     netw_name = "CO2_Pipeline"
     os.makedirs(input_data_path / "period1" / "network_topology" / "new" / netw_name, exist_ok=True)
-    data['connection_matrix'].to_csv(
+    merged_connection.to_csv(
         input_data_path / "period1" / "network_topology" / "new" / netw_name / "connection.csv",
-        sep=";")
-    data['distance_matrix'].to_csv(
+        sep=";"
+    )
+    merged_distance.to_csv(
         input_data_path / "period1" / "network_topology" / "new" / netw_name / "distance.csv",
-        sep=";")
+        sep=";"
+    )
 
     # H2 NETWORKS
     # offshore

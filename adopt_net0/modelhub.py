@@ -280,6 +280,7 @@ class ModelHub:
         # DEFINE GLOBAL VARIABLES
         model.var_npv = pyo.Var()
         model.var_emissions_net = pyo.Var()
+        model.var_emissions_neg = pyo.Var(within=pyo.NonNegativeReals)
 
         # INVESTMENT PERIOD BLOCK
         def init_period_block(b_period):
@@ -639,6 +640,7 @@ class ModelHub:
         log.info(log_msg)
         self._call_solver()
 
+
     def _optimize_costs_emissionslimit(self):
         """
         Minimize costs at emission limit
@@ -648,18 +650,35 @@ class ModelHub:
         config = self.data.model_config
 
         emission_limit = config["optimization"]["emission_limit"]["value"]
+        neg_emission_target = config["optimization"]["neg_emission_limit"]["value"]
+
         if model.find_component("const_emission_limit"):
             if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
                 self.solver.remove_constraint(model.const_emission_limit)
             model.del_component(model.const_emission_limit)
+
         model.const_emission_limit = pyo.Constraint(
             expr=model.var_emissions_net <= emission_limit
         )
+
         if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
-            self.solver.add_constraint(model.const_emission_limit)
-        log_msg = "Defined constraint on net emissions"
-        print(log_msg)
-        log.info(log_msg)
+                self.solver.add_constraint(model.const_emission_limit)
+
+        if model.find_component("const_neg_emission_target"):
+            if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
+                self.solver.remove_constraint(model.const_neg_emission_target)
+            model.del_component(model.const_neg_emission_target)
+
+        model.const_neg_emission_target = pyo.Constraint(
+            expr=model.var_emissions_neg == neg_emission_target
+        )
+        if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
+            self.solver.add_constraint(model.const_neg_emission_target)
+
+        # Validation prints
+        print(f"Net emission limit: {emission_limit}")
+        print(f"DAC removal target (exact): {neg_emission_target}")
+
         self._optimize_cost()
 
     def _optimize_costs_minE(self):

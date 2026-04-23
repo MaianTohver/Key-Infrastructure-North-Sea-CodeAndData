@@ -25,6 +25,8 @@ def delete_all_balances(model):
         model.del_component(model.const_npv)
     if model.find_component("const_emissions"):
         model.del_component(model.const_emissions)
+    if model.find_component("const_emissions_neg"):
+        model.del_component(model.const_emissions_neg)
 
     return model
 
@@ -824,5 +826,13 @@ def construct_global_balance(model):
         )
 
     model.const_emissions = pyo.Constraint(rule=init_emissions)
+
+    def init_emissions_neg(const):
+        return (
+                sum(model.periods[period].var_emissions_neg for period in model.set_periods)
+                == model.var_emissions_neg
+        )
+
+    model.const_emissions_neg = pyo.Constraint(rule=init_emissions_neg)
 
     return model

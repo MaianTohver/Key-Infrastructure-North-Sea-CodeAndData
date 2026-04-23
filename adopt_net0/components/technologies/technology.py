@@ -958,9 +958,9 @@ class Technology(ModelComponent):
                 def init_tec_emissions_neg(const, t):
                     if c["emission_factor"] < 0:
                         return (
-                            b_tec.var_output[t, self.main_output_carrier]
-                            * (-b_tec.para_tec_emissionfactor)
-                            == b_tec.var_tec_emissions_neg[t]
+                                b_tec.var_input[t, self.main_input_carrier]
+                                * (-b_tec.para_tec_emissionfactor)
+                                == b_tec.var_tec_emissions_neg[t]
                         )
                     else:
                         return b_tec.var_tec_emissions_neg[t] == 0

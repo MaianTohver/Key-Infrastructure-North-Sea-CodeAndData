@@ -658,7 +658,7 @@ class ModelHub:
             model.del_component(model.const_emission_limit)
 
         model.const_emission_limit = pyo.Constraint(
-            expr=model.var_emissions_net <= emission_limit
+            expr=model.var_emissions_net <= emission_limit #try with ==
         )
 
         if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":

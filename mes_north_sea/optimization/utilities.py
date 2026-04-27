@@ -14,7 +14,7 @@ class Settings():
 
     def __init__(self, test):
         self.test = test
-        self.year = 2030
+        self.year = 2040
         self.scenario = 'NT'
         self.climate_year = 2008
         self.simplify_networks = 1
@@ -70,6 +70,7 @@ def write_to_technology_data(settings):
         tec_data['Economics']['opex_fixed'] = float(round(new_financial_data['OPEX Fixed'].values[0],3))
         tec_data['Economics']['lifetime'] = float(round(new_financial_data['Lifetime'].values[0],0))
         tec_data['Performance']['emission_factor'] = float(round(new_financial_data['Emission factor'].values[0],3))
+
         if 'performance' in tec_data['Performance']:
             performance_parameters = {'eta_in': 'Charging Efficiency', 'eta_out': 'Discharging Efficiency', 'lambda': 'Lambda'}
             for para in performance_parameters.keys():
@@ -137,10 +138,10 @@ def read_nodes(settings):
     if settings.test_nodes:
         node_data = data_path  / "nodes" / "nodes_test.xlsx"
 
-
     node_list = pd.read_excel(node_data, sheet_name='Nodes_used')
     nodes.onshore_nodes = node_list[node_list['Type'] == 'onshore']['Node'].values.tolist()
-    nodes.offshore_nodes = node_list[node_list['Type'].apply(lambda x: x.startswith('offshore'))]['Node'].values.tolist()
+    nodes.offshore_nodes = node_list[node_list['Type'].isin(['offshore_new','offshore_existing','New_Offshore_Farms_2040'])]['Node'].values.tolist()
+    nodes.storage_nodes = node_list[node_list['Type'] == 'New_CO2_Storage_2040']['Node'].values.tolist()
     nodes.all = {}
     for row in node_list.iterrows():
         node_data = {}
@@ -263,11 +264,9 @@ def define_installed_capacities(input_data_path, settings, nodes):
 def define_new_technologies(input_data_path, settings, nodes):
 
     data_path = settings.data_path
-
     if settings.year == 2030:
         new_tecs = pd.read_excel(data_path /'new_technologies/NewTechnologies.xlsx', index_col=0,
                                  sheet_name='NewTechnologies')
-
     elif settings.year == 2040:
         new_tecs = pd.read_excel(data_path /'new_technologies/NewTechnologies_2040.xlsx', index_col=0,
                                  sheet_name='NewTechnologies')
@@ -276,6 +275,8 @@ def define_new_technologies(input_data_path, settings, nodes):
 
     if not stage == None:
         for node in nodes.all.keys():
+            if node in nodes.storage_nodes:  # skip storage nodes
+                continue
             if not isinstance(new_tecs[stage][node], float):
                 with open(input_data_path / "period1" / "node_data" / node / "Technologies.json", "r") as json_file:
                     technologies = json.load(json_file)
@@ -555,6 +556,8 @@ def define_generic_production(input_data_path, settings, nodes):
     generic_production = pd.read_csv(settings.data_path / "production_profiles_re" / f"production_profiles_re{str(climate_year)}.csv", index_col=0, header=[0, 1])
     generic_production_no2009 = pd.read_csv(settings.data_path / "production_profiles_re" / "production_profiles_re.csv", index_col=0, header=[0, 1])
     for node in nodes.all.keys():
+        if node in nodes.storage_nodes:
+            continue
         profile = pd.DataFrame()
         if (node, 'total') in generic_production.columns:
             if settings.validation == 1 and node == "NO1" and climate_year == 2009:
@@ -590,8 +593,6 @@ def define_capacity_factors(input_data_path, settings):
     climate_year = settings.climate_year
 
     data_path = settings.data_path /'capacity_factors'
-
-
     cfs = {}
     if settings.validation:
         cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore{str(2008)}.csv", index_col=0)
@@ -684,6 +685,8 @@ def define_imports_exports(input_data_path, settings, nodes):
         hydrogen_demand = pd.read_csv(settings.data_path / "demand" / f"HydrogenDemand_NT_{str(settings.climate_year)}.csv", index_col=0)
 
     for node in nodes.all.keys():
+        if node in nodes.storage_nodes:
+            continue
         for car in import_carrier_price:
             adopt.fill_carrier_data(input_data_path, value_or_data=import_carrier_price[car], columns=['Import price'],
                                     carriers=[car], nodes=[node])

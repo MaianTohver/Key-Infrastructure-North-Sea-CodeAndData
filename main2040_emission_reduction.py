@@ -1,10 +1,11 @@
 import random
 from mes_north_sea.optimization.utilities import *
 from pathlib import Path
+import pyomo.environ as pyo
 
 test = 1
 settings = Settings(test=test)
-settings.demand_factor = 1
+settings.demand_factor = 0
 settings.year = 2040
 settings.variable_h2_demand = 0
 cys = [1995] # 2008, 2009
@@ -19,6 +20,7 @@ Path(save_path + "/2040/").mkdir(parents=True, exist_ok=True)
 write_to_network_data(settings)
 write_to_technology_data(settings)
 
+# baseline emissions are 69,408,942.543
 neg_emission_cap = 5000
 emission_targets = [0.5] # 0.99, 0.98, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0
 emission_targets.reverse()
@@ -71,6 +73,11 @@ for stage in scenarios.keys():
             adopt.create_optimization_templates(input_data_path)
 
             nodes = read_nodes(settings)
+            print(f"Storage nodes: {nodes.storage_nodes}")
+            print(f"Offshore nodes count: {len(nodes.offshore_nodes)}")
+            print(f"All nodes count: {len(nodes.all)}")
+            print(f"All node names: {list(nodes.all.keys())}")
+
             define_topology(settings, input_data_path, nodes)
             define_configuration(input_data_path, settings)
 
@@ -116,38 +123,15 @@ for stage in scenarios.keys():
                 settings.climate_year)
             m._optimize_emissions_net()
 
-            #check if the emissions work
-            _m = m.model[m.info_solving_algorithms["aggregation_model"]]
-            print(f"Global var_emissions_net: {_m.var_emissions_net.value}")
-            print(f"Global var_emissions_neg: {_m.var_emissions_neg.value}")
-            print(f"Period var_emissions_net: {_m.periods['period1'].var_emissions_net.value}")
-            print(f"Period var_emissions_neg: {_m.periods['period1'].var_emissions_neg.value}")
-            print(f"Max reduction achievable: {_m.var_emissions_net.value / baseline_value:.1%}")
-            print("CO2 Pipeline connections:")
-            if _m.periods["period1"].find_component("network_block"):
-                for netw in _m.periods["period1"].network_block:
-                    if "CO2" in netw or "co2" in netw.lower():
-                        print(f"Network: {netw}")
-                        for arc in _m.periods["period1"].network_block[netw].set_arcs:
-                            print(f"  {arc[0]} -> {arc[1]}")
-            print("\nCarriers at DAC nodes:")
-            for _node in ["BE1", "BE2", "DE1"]:
-                if _m.periods["period1"].node_blocks.find_component(_node):
-                    carriers = list(_m.periods["period1"].node_blocks[_node].set_carriers)
-                    print(f"  {_node}: {carriers}")
-            max_em_reduction = _m.var_emissions_net.value / baseline_value
-            print(max_em_reduction)
-
             # min cost at emission limit
             m.data.model_config["optimization"]["neg_emission_limit"]["value"] = neg_emission_cap
             for reduction in emission_targets:
-                if max_em_reduction <= reduction:
-                    m.data.model_config["optimization"]["emission_limit"][
-                        "value"] = baseline_value * reduction
-                    if settings.test == 1:
-                        m.data.model_config["reporting"]["case_name"]["value"] = 'TEST' + stage + '_minCost_at_' + str(
-                            reduction)
-                    else:
-                        m.data.model_config["reporting"]["case_name"]["value"] = stage + '_minCost_at_' + str(reduction)
+                m.data.model_config["optimization"]["emission_limit"]["value"] = baseline_value * reduction
 
-                    m._optimize_costs_emissionslimit()
+                if settings.test == 1:
+                    m.data.model_config["reporting"]["case_name"]["value"] = 'TEST' + stage + '_minCost_at_' + str(
+                        reduction)
+                else:
+                    m.data.model_config["reporting"]["case_name"]["value"] = stage + '_minCost_at_' + str(reduction)
+
+                m._optimize_costs_emissionslimit()

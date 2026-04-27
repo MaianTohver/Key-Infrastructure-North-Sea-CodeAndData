@@ -23,7 +23,7 @@
     "main_input_carrier": "CO2captured",
     "output_carrier": [
     ],
-    "emission_factor": -1,
+    "emission_factor": 0,
     "allow_only_one_direction": 1,
     "performance": {
       "energy_consumption": {

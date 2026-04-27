@@ -5,7 +5,7 @@
   "size_max": 200000,
   "decommission": "impossible",
   "Economics": {
-    "comment": "CAPEX in EUR/MW or as a piecewise function, opex_variable in EUR/MWh total output, opex_fixed in % of annualized CAPEX",
+    "comment": "CAPEX in EUR/MW or as a piecewise function, opex_variable in EUR/MWh total output, opex_fixed in % of up-front CAPEX",
     "capex_model": 1,
     "unit_capex": 0.81E+6,
     "fix_capex": 0,
@@ -24,7 +24,7 @@
       ]
     },
     "opex_variable": 1.80,
-    "opex_fixed": 0.024,
+    "opex_fixed": 0.26,
     "discount_rate": 0.1,
     "lifetime": 25,
     "decommission_cost": 0
@@ -41,7 +41,8 @@
     ],
     "emission_factor": 0,
     "min_part_load": 0.2,
-    "T_out": 150
+    "application": "radiator_heating",
+    "T_out": 39
   },
   "Units": {
     "size": "MW",

@@ -7,11 +7,11 @@
   "Economics": {
     "comment": "CAPEX is 0, cost are given by opex_variable in EUR/tCO2 stored",
     "capex_model": 1,
-    "unit_capex": 0,
+    "unit_capex": 0.0,
     "opex_variable": 7.01,
-    "opex_fixed": 0,
+    "opex_fixed": 0.0,
     "discount_rate": 0.1,
-    "lifetime": 30,
+    "lifetime": 30.0,
     "decommission_cost": 0
   },
   "Performance": {
@@ -21,9 +21,8 @@
       "electricity"
     ],
     "main_input_carrier": "CO2captured",
-    "output_carrier": [
-    ],
-    "emission_factor": 0,
+    "output_carrier": [],
+    "emission_factor": 0.0,
     "allow_only_one_direction": 1,
     "performance": {
       "energy_consumption": {

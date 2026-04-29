@@ -658,7 +658,7 @@ class ModelHub:
             model.del_component(model.const_emission_limit)
 
         model.const_emission_limit = pyo.Constraint(
-            expr=model.var_emissions_net <= emission_limit #try with ==
+            expr=model.var_emissions_net <= emission_limit
         )
 
         if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
@@ -680,6 +680,52 @@ class ModelHub:
         print(f"DAC removal target (exact): {neg_emission_target}")
 
         self._optimize_cost()
+
+    def _optimize_neg_emissions_emissionslimit(self):
+        """
+        Minimize negative emissions at emission limit
+        """
+        model = self.model[self.info_solving_algorithms["aggregation_model"]]
+        config = self.data.model_config
+        emission_limit = config["optimization"]["emission_limit"]["value"]
+        neg_emission_cap = config["optimization"]["neg_emission_limit"]["value"]
+
+        if model.find_component("const_emission_limit"):
+            if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
+                self.solver.remove_constraint(model.const_emission_limit)
+            model.del_component(model.const_emission_limit)
+        model.const_emission_limit = pyo.Constraint(expr=model.var_emissions_net <= emission_limit)
+        if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
+            self.solver.add_constraint(model.const_emission_limit)
+
+        if model.find_component("const_neg_emission_cap"):
+            if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
+                self.solver.remove_constraint(model.const_neg_emission_cap)
+            model.del_component(model.const_neg_emission_cap)
+        model.const_neg_emission_cap = pyo.Constraint(expr=model.var_emissions_neg <= neg_emission_cap)
+        if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
+            self.solver.add_constraint(model.const_neg_emission_cap)
+
+        print(f"Net emission limit: {emission_limit}")
+        print(f"Neg emission cap (upper bound): {neg_emission_cap}")
+
+        self._delete_objective()
+
+        def init_neg_emission_objective(obj):
+            return model.var_emissions_neg
+
+        model.objective = pyo.Objective(
+            rule=init_neg_emission_objective, sense=pyo.minimize
+        )
+        log_msg = "Set objective on negative emissions"
+        print(log_msg)
+        log.info(log_msg)
+        self._call_solver()
+
+        log_msg = "Set objective on negative emissions"
+        print(log_msg)
+        log.info(log_msg)
+        self._call_solver()
 
     def _optimize_costs_minE(self):
         """

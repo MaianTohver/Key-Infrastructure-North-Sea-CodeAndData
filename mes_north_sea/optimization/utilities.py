@@ -25,7 +25,7 @@ class Settings():
 
         if test:
             self.start_date = '05-01 00:00'
-            self.end_date = '05-01 00:00'
+            self.end_date = '05-01 01:00'
         else:
             self.start_date = '01-01 00:00'
             self.end_date = '12-31 23:00'
@@ -139,6 +139,8 @@ def read_nodes(settings):
         node_data = data_path  / "nodes" / "nodes_test.xlsx"
 
     node_list = pd.read_excel(node_data, sheet_name='Nodes_used')
+    node_list = node_list.dropna(subset=['Node', 'Type'])
+    node_list = node_list.drop_duplicates(subset=['Node'], keep='first')
     nodes.onshore_nodes = node_list[node_list['Type'] == 'onshore']['Node'].values.tolist()
     nodes.offshore_nodes = node_list[node_list['Type'].isin(['offshore_new','offshore_existing','New_Offshore_Farms_2040'])]['Node'].values.tolist()
     nodes.storage_nodes = node_list[node_list['Type'] == 'New_CO2_Storage_2040']['Node'].values.tolist()
@@ -196,7 +198,7 @@ def define_configuration(input_data_path, settings):
     configuration["solveroptions"]["method"]["value"] = 2
     configuration["solveroptions"]["threads"]["value"] = 48
     configuration["solveroptions"]["crossover"] = {}
-    configuration["solveroptions"]["crossover"]["value"] = -1
+    configuration["solveroptions"]["crossover"]["value"] = 0
     configuration["solveroptions"]["nodemethod"] = {}
     configuration["solveroptions"]["nodemethod"]["value"] = -1
     configuration["solveroptions"]["intfeastol"]["value"] = 1e-3
@@ -286,13 +288,35 @@ def define_new_technologies(input_data_path, settings, nodes):
                 with open(input_data_path / "period1" / "node_data" / node / "Technologies.json", "w") as json_file:
                     json.dump(technologies, json_file, indent=4)
 
+def define_storage(input_data_path, settings, nodes):
+    data_path = settings.data_path
+    limits = pd.read_csv(data_path / "storage_limits" / "CO2_storage_limits_2040.csv", sep=',',thousands=',')
+    limits.columns = limits.columns.str.strip()
+    limits = limits.set_index("Node")
+    nodes.storage_nodes = limits.index.tolist()
+
+    for node in nodes.storage_nodes:
+        tec_data_path = (input_data_path / "period1" / "node_data" / node / "technology_data" / "PermanentStorage_CO2_simple.json")
+        if not tec_data_path.exists():
+            continue
+        with open(tec_data_path, "r") as f:
+            tec_data = json.load(f)
+        if node in limits.index:
+            tec_data["size_max"] = float(limits.loc[node, "size_max"])
+            if "Flexibility" not in tec_data:
+                tec_data["Flexibility"] = {}
+            tec_data["Flexibility"]["injection_rate_max"] = float(
+                limits.loc[node, "injection_rate_max"])
+
+        with open(tec_data_path, "w") as f:
+            json.dump(tec_data, f, indent=2)
+
 def define_networks(input_data_path, settings):
     """
     Defines the networks
     """
 
     stage = settings.new_technologies_stage
-
     # CO2 network
     if settings.year == 2030 or settings.year == 2040:
         new_co2_networks = ["CO2_Pipeline"]
@@ -338,7 +362,7 @@ def define_network_topology(input_data_path, settings, nodes):
     stage = settings.new_technologies_stage
 
     def get_network_data(file_path, nodes):
-        network = pd.read_csv(file_path, sep=';')
+        network = pd.read_csv(file_path, sep=None, engine='python')
 
         network_data = {}
         network_data['size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
@@ -462,7 +486,7 @@ def define_network_topology(input_data_path, settings, nodes):
         input_data_path / "period1" / "network_topology" / "new" / dc_netw_name / "size_max_arcs.csv",
         sep=";")
 
-    # co2 networks merged onshore and offshore
+    # co2 networks onshore and offshore
     if settings.year == 2030:
         file_name_offshore = 'pyhub_co2_offshore.csv'
     elif settings.year == 2040:

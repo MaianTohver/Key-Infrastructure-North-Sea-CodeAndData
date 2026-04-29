@@ -88,11 +88,15 @@ class HeatPump(Technology):
 
         # Determine COP
         if "AirSourced" in self.name:
-            cop = 6.08 - 0.09 * delta_T + 0.0005 * delta_T**2
+            cop = np.full(time_steps, 1.80)
+            # 6.08 - 0.09 * delta_T + 0.0005 * delta_T**2
+            # 120 degrees desorption and 11 degree ambient T
         elif "GroundSourced" in self.name:
             cop = 10.29 - 0.21 * delta_T + 0.0012 * delta_T**2
         elif "WaterSourced" in self.name:
-            cop = 9.97 - 0.20 * delta_T + 0.0012 * delta_T**2
+            cop = np.full(time_steps, 1.74)
+            # 9.97 - 0.20 * delta_T + 0.0012 * delta_T**2
+            # 120 degrees desorption and 7 degree sea temp
 
         log.info("Deriving performance data for Heat Pump...")
 

@@ -1,0 +1,10 @@
+{
+    "existing": [
+        "electricityAC",
+        "electricityDC"
+    ],
+    "new": [
+        "electricityDC",
+        "CO2_Pipeline"
+    ]
+}

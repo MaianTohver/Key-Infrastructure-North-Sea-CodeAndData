@@ -835,4 +835,12 @@ def construct_global_balance(model):
 
     model.const_emissions_neg = pyo.Constraint(rule=init_emissions_neg)
 
+    def init_emissions_pos(const):
+        return (
+                sum(model.periods[period].var_emissions_pos for period in model.set_periods)
+                == model.var_emissions_pos
+        )
+
+    model.const_emissions_pos = pyo.Constraint(rule=init_emissions_pos)
+
     return model

@@ -201,6 +201,8 @@ def define_configuration(input_data_path, settings):
     configuration["solveroptions"]["crossover"]["value"] = 0
     configuration["solveroptions"]["nodemethod"] = {}
     configuration["solveroptions"]["nodemethod"]["value"] = -1
+    # configuration["solveroptions"]["barhomogeneous"] = {}
+    # configuration["solveroptions"]["barhomogeneous"]["value"] = 1
     configuration["solveroptions"]["intfeastol"]["value"] = 1e-3
     configuration["solveroptions"]["feastol"]["value"] = 1e-3
 
@@ -363,12 +365,15 @@ def define_network_topology(input_data_path, settings, nodes):
 
     def get_network_data(file_path, nodes):
         network = pd.read_csv(file_path, sep=None, engine='python')
+        all_nodes = list(nodes.all.keys())
+        empty = pd.DataFrame(0.0, index=all_nodes, columns=all_nodes)
 
         network_data = {}
         network_data['size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
         network_data['distance_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
         network_data['max_size_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
         network_data['connection_matrix'] = pd.read_csv(input_data_path / "period1" / "network_topology" / "existing" / "connection.csv", sep=";", index_col=0).astype(float)
+
         for idx, row in network.iterrows():
             if (row.node0 in nodes.all.keys()) & (row.node1 in nodes.all.keys()):
                 network_data['size_matrix'].at[row['node0'], row['node1']] = row['s_nom']*1000
@@ -513,25 +518,25 @@ def define_network_topology(input_data_path, settings, nodes):
         sep=";"
     )
 
-    # H2 NETWORKS
-    # offshore
-    if settings.year == 2030:
-        file_name = 'pyhub_h2_offshore.csv'
-    elif settings.year == 2040:
-        file_name = 'pyhub_h2_offshore_2040.csv'
-
-    data = get_network_data(data_path /file_name, nodes)
-    netw_name = "hydrogenPipelineOffshore"
-    os.makedirs(input_data_path / "period1" / "network_topology" / "new" / netw_name, exist_ok=True)
-    data['connection_matrix'].to_csv(
-        input_data_path / "period1" / "network_topology" / "new" / netw_name / "connection.csv",
-        sep=";")
-    data['distance_matrix'].to_csv(
-        input_data_path / "period1" / "network_topology" / "new" / netw_name / "distance.csv",
-        sep=";")
-    # data['size_matrix'].to_csv(
-    #     input_data_path / "period1" / "network_topology" / "new" / netw_name / "size_max_arcs.csv",
+    # # H2 NETWORKS
+    # # offshore
+    # if settings.year == 2030:
+    #     file_name = 'pyhub_h2_offshore.csv'
+    # elif settings.year == 2040:
+    #     file_name = 'pyhub_h2_offshore_2040.csv'
+    #
+    # data = get_network_data(data_path /file_name, nodes)
+    # netw_name = "hydrogenPipelineOffshore"
+    # os.makedirs(input_data_path / "period1" / "network_topology" / "new" / netw_name, exist_ok=True)
+    # data['connection_matrix'].to_csv(
+    #     input_data_path / "period1" / "network_topology" / "new" / netw_name / "connection.csv",
     #     sep=";")
+    # data['distance_matrix'].to_csv(
+    #     input_data_path / "period1" / "network_topology" / "new" / netw_name / "distance.csv",
+    #     sep=";")
+    # # data['size_matrix'].to_csv(
+    # #     input_data_path / "period1" / "network_topology" / "new" / netw_name / "size_max_arcs.csv",
+    # #     sep=";")
 
     # onshore new
     file_name = 'pyhub_h2_onshore_new.csv'

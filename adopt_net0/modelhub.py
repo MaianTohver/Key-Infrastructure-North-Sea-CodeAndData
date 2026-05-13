@@ -281,6 +281,7 @@ class ModelHub:
         model.var_npv = pyo.Var()
         model.var_emissions_net = pyo.Var()
         model.var_emissions_neg = pyo.Var(within=pyo.NonNegativeReals)
+        model.var_emissions_pos = pyo.Var(within=pyo.NonNegativeReals)
 
         # INVESTMENT PERIOD BLOCK
         def init_period_block(b_period):
@@ -447,10 +448,15 @@ class ModelHub:
                     save_summary_path, index=False, sheet_name="Summary"
                 )
             else:
-                summary_existing = pd.read_excel(save_summary_path)
-                pd.concat(
-                    [summary_existing, pd.DataFrame(data=summary_dict, index=[0])]
-                ).to_excel(save_summary_path, index=False, sheet_name="Summary")
+                try:
+                    summary_existing = pd.read_excel(save_summary_path)
+                    pd.concat(
+                        [summary_existing, pd.DataFrame(data=summary_dict, index=[0])]
+                    ).to_excel(save_summary_path, index=False, sheet_name="Summary")
+                except Exception:
+                    pd.DataFrame(data=summary_dict, index=[0]).to_excel(
+                        save_summary_path, index=False, sheet_name="Summary"
+                    )
 
     def add_technology(self, investment_period: str, node: str, technologies: list):
         """
@@ -640,44 +646,44 @@ class ModelHub:
         log.info(log_msg)
         self._call_solver()
 
-
     def _optimize_costs_emissionslimit(self):
-        """
-        Minimize costs at emission limit
-        """
         model = self.model[self.info_solving_algorithms["aggregation_model"]]
-
         config = self.data.model_config
+        is_persistent = config["solveroptions"]["solver"]["value"] == "gurobi_persistent"
 
-        emission_limit = config["optimization"]["emission_limit"]["value"]
         neg_emission_target = config["optimization"]["neg_emission_limit"]["value"]
+        pos_emission_limit = config["optimization"]["pos_emission_limit"]["value"]
 
-        if model.find_component("const_emission_limit"):
-            if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
-                self.solver.remove_constraint(model.const_emission_limit)
-            model.del_component(model.const_emission_limit)
+        if model.find_component("const_pos_emission_limit"):
+            if is_persistent:
+                self.solver.remove_constraint(model.const_pos_emission_limit)
+            model.del_component(model.const_pos_emission_limit)
 
-        model.const_emission_limit = pyo.Constraint(
-            expr=model.var_emissions_net <= emission_limit
+        model.const_pos_emission_limit = pyo.Constraint(
+            expr=sum(
+                model.periods[period].var_emissions_pos
+                for period in model.set_periods
+            ) <= pos_emission_limit
         )
+        if is_persistent:
+            self.solver.add_constraint(model.const_pos_emission_limit)
 
-        if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
-                self.solver.add_constraint(model.const_emission_limit)
+        if model.find_component("const_neg_emission_target_lb"):
+            if is_persistent:
+                self.solver.remove_constraint(model.const_neg_emission_target_lb)
+                self.solver.remove_constraint(model.const_neg_emission_target_ub)
+            model.del_component(model.const_neg_emission_target_lb)
+            model.del_component(model.const_neg_emission_target_ub)
 
-        if model.find_component("const_neg_emission_target"):
-            if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
-                self.solver.remove_constraint(model.const_neg_emission_target)
-            model.del_component(model.const_neg_emission_target)
-
-        model.const_neg_emission_target = pyo.Constraint(
-            expr=model.var_emissions_neg == neg_emission_target
+        model.const_neg_emission_target_lb = pyo.Constraint(
+            expr=model.var_emissions_neg >= neg_emission_target * 0.99
         )
-        if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
-            self.solver.add_constraint(model.const_neg_emission_target)
-
-        # Validation prints
-        print(f"Net emission limit: {emission_limit}")
-        print(f"DAC removal target (exact): {neg_emission_target}")
+        model.const_neg_emission_target_ub = pyo.Constraint(
+            expr=model.var_emissions_neg <= neg_emission_target * 1.01
+        )
+        if is_persistent:
+            self.solver.add_constraint(model.const_neg_emission_target_lb)
+            self.solver.add_constraint(model.const_neg_emission_target_ub)
 
         self._optimize_cost()
 
@@ -702,7 +708,7 @@ class ModelHub:
             if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
                 self.solver.remove_constraint(model.const_neg_emission_cap)
             model.del_component(model.const_neg_emission_cap)
-        model.const_neg_emission_cap = pyo.Constraint(expr=model.var_emissions_neg <= neg_emission_cap)
+        model.const_neg_emission_cap = pyo.Constraint(expr=model.var_emissions_neg >= neg_emission_cap)
         if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
             self.solver.add_constraint(model.const_neg_emission_cap)
 
@@ -715,8 +721,7 @@ class ModelHub:
             return model.var_emissions_neg
 
         model.objective = pyo.Objective(
-            rule=init_neg_emission_objective, sense=pyo.minimize
-        )
+            rule=init_neg_emission_objective, sense=pyo.minimize)
         log_msg = "Set objective on negative emissions"
         print(log_msg)
         log.info(log_msg)
@@ -742,11 +747,29 @@ class ModelHub:
                 self.solver.remove_constraint(model.const_emission_limit)
             model.del_component(model.const_emission_limit)
         model.const_emission_limit = pyo.Constraint(
-            expr=model.var_emissions_net <= emission_limit * 1.001
-        )
+            expr=model.var_emissions_net <= emission_limit * 1.001)
         if config["solveroptions"]["solver"]["value"] == "gurobi_persistent":
             self.solver.add_constraint(model.const_emission_limit)
         self._optimize_cost()
+
+    def _optimize_emissions_neg(self):
+        """
+        Maximize negative emissions.
+        """
+        model = self.model[self.info_solving_algorithms["aggregation_model"]]
+
+        self._delete_objective()
+
+        def init_emissions_neg_objective(obj):
+            return model.var_emissions_neg
+
+        model.objective = pyo.Objective(
+            rule=init_emissions_neg_objective, sense=pyo.maximize
+        )
+        log_msg = "Set objective on negative emissions (maximize removals)"
+        print(log_msg)
+        log.info(log_msg)
+        self._call_solver()
 
     def scale_model(self):
         """

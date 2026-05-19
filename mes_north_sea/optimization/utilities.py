@@ -179,7 +179,7 @@ def define_topology(settings, input_data_path, nodes):
 
 
 
-def define_configuration(input_data_path, settings):
+def define_configuration(input_data_path, settings, save_path):
     # Configuration
     with open(input_data_path / "ConfigModel.json", "r") as json_file:
         configuration = json.load(json_file)
@@ -194,9 +194,9 @@ def define_configuration(input_data_path, settings):
     configuration["solveroptions"]["mipgap"]["value"] = 0.02
     configuration["solveroptions"]["lpwarmstart"]["value"] = 0
     configuration["solveroptions"]["numericfocus"]["value"] = 3
-    configuration["solveroptions"]["timelim"]["value"] = 7*24
+    configuration["solveroptions"]["timelim"]["value"] = 7
     configuration["solveroptions"]["method"]["value"] = 2
-    configuration["solveroptions"]["threads"]["value"] = 48
+    configuration["solveroptions"]["threads"]["value"] = 20
     configuration["solveroptions"]["crossover"] = {}
     configuration["solveroptions"]["crossover"]["value"] = 0
     configuration["solveroptions"]["nodemethod"] = {}
@@ -206,8 +206,8 @@ def define_configuration(input_data_path, settings):
     configuration["solveroptions"]["intfeastol"]["value"] = 1e-3
     configuration["solveroptions"]["feastol"]["value"] = 1e-3
 
-    configuration["reporting"]["save_summary_path"]["value"] = "results/" + str(settings.year) + "/"
-    configuration["reporting"]["save_path"]["value"] = "results/" + str(settings.year) + "/"
+    configuration["reporting"]["save_summary_path"]["value"] = save_path + "/" + str(settings.year) + "/"
+    configuration["reporting"]["save_path"]["value"] = save_path + "/" + str(settings.year) + "/"
 
     configuration["scaling"]["scaling_on"]["value"] = 1
     configuration["scaling"]["scaling_factors"]["energy_vars"]["value"] = 1e-2

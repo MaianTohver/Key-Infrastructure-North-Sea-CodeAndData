@@ -18,12 +18,13 @@ settings = Settings(test=test)
 settings.demand_factor = 1
 settings.year = 2040
 settings.variable_h2_demand = 0
-cys = [1995, 2008, 2009] # 1995, 2008, 2009
+cys = [2009] # 1995, 2008, 2009
 co2_tax = [100]
 c_permutation = 0.01
 
 data_path = "mes_north_sea/data_" + str(settings.year)
-save_path = "/data/8051917/results"
+save_path =  "/data/8051917/results" #"/Users/maiant/PycharmProjects/Key-Infrastructure-North-Sea-CodeAndData/results" #/data/8051917/results
+scratch_path = os.path.join(Path(save_path).parent, "scratch")
 
 neg_emission_cap = 5000000 #500,000 tco2/yr
 # emission_targets = [0.6, 0.4, 0.2] # 0.99, 0.98, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0
@@ -42,10 +43,11 @@ scenarios = {
     # 'ElectricityGrid_on': 'Grid Expansion (onshore only)',
     # 'ElectricityGrid_off': 'Grid Expansion (offshore only)',
     # 'ElectricityGrid_noBorder': 'Grid Expansion (no Border)',
-    'RE_only': 'RE only',
+    #'RE_only': 'RE only',
+    'RE_only_no_space' : 'RE_only_no_space',
     'Offshore_DAC_only': 'Offshore DAC only',
     'Onshore_DAC_only': 'Onshore DAC only',
-    'Onshore_DAC_retrofits' : 'Onshore DAC retrofits',
+    # 'Onshore_DAC_retrofits' : 'Onshore DAC retrofits',
     # 'Battery_on': 'Battery (onshore only)',
     # 'Battery_off': 'Battery (offshore only)',
              }
@@ -58,7 +60,7 @@ def run_climate_year(args):
     if stage in [
         'ElectricityGrid_all', 'ElectricityGrid_on', 'ElectricityGrid_off',
         'ElectricityGrid_noBorder', 'RE_only', 'Battery_on', 'Battery_off',
-        'Battery_all', 'Offshore_DAC_only', 'Onshore_DAC_only', 'Onshore_DAC_retrofits',
+        'Battery_all', 'Offshore_DAC_only', 'Onshore_DAC_only', 'Onshore_DAC_retrofits', 'RE_only_no_space',
     ]:
         settings_local.model_h2 = 0
     else:
@@ -123,6 +125,9 @@ def run_climate_year(args):
 
         os.environ["TMPDIR"] = "/scratch/8051917/tmp"
         os.makedirs("/scratch/8051917/tmp", exist_ok=True)
+        #local_scratch = os.path.join(Path(save_path).parent, "scratch")
+        #os.environ["TMPDIR"] = local_scratch
+        #os.makedirs(local_scratch, exist_ok=True)
 
         m.construct_model()
         m.construct_balances()
@@ -135,7 +140,7 @@ def run_climate_year(args):
             m.data.model_config["optimization"].setdefault("pos_emission_limit", {})["value"] = baseline_value
             m.data.model_config["reporting"]["case_name"]["value"] = (
                 f"{stage}_minCost_neg{frac:.2f}_cy{cy}")
-            m._optimize_costs_emissionslimit()
+            m._optimize_north_sea_dac()
 
             # # Baseline
             # m.data.model_config["reporting"]["case_name"]["value"] = stage + '_baseline_cy' + str(cy)
@@ -195,7 +200,8 @@ if __name__ == '__main__':
     write_to_technology_data(settings)
     Path(save_path + "/2040_test/").mkdir(parents=True, exist_ok=True)
     Path(save_path + "/2040/").mkdir(parents=True, exist_ok=True)
-    os.makedirs("/scratch/8051917/tmp", exist_ok=True)
+    os.environ["TMPDIR"] = scratch_path
+    os.makedirs(scratch_path, exist_ok=True)
     killed = []
     for stage in scenarios.keys():
         jobs = [(cy, stage, save_path) for cy in cys]
@@ -211,6 +217,9 @@ if __name__ == '__main__':
                     break
                 except Exception as e:
                     killed.append(job)
+                    print(f"Job {job} failed: {e}", flush=True)
+                    import traceback
+                    traceback.print_exc()
 
     if killed:
         print(f"jobs killed or failed: {killed}", flush=True)

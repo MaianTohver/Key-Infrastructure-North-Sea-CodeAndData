@@ -24,8 +24,8 @@ class Settings():
         self.model_h2 = 1
 
         if test:
-            self.start_date = '05-01 00:00'
-            self.end_date = '05-01 01:00'
+            self.start_date = '01-05 06:00'
+            self.end_date = '01-05 10:00'
         else:
             self.start_date = '01-01 00:00'
             self.end_date = '12-31 23:00'
@@ -189,6 +189,7 @@ def define_configuration(input_data_path, settings, save_path):
     configuration["optimization"]["monte_carlo"]["N"]["value"] = 0
     configuration["optimization"]["monte_carlo"]["sd"]["value"] = 0.5
     configuration["optimization"]["monte_carlo"]["on_what"]["value"] = ["Technologies", "Networks", "Import", "Export"]
+    configuration["optimization"].setdefault("ohmic_opex_cost", {})["value"] = 1e-3
 
     configuration["solveroptions"]["solver"]["value"] = 'gurobi'
     configuration["solveroptions"]["mipgap"]["value"] = 0.02
@@ -618,23 +619,47 @@ def define_hydro_inflow(input_data_path, settings):
 
         climate_data.to_csv(input_data_path / "period1" / "node_data" / node / "ClimateData.csv", sep=";")
 
+
 def define_capacity_factors(input_data_path, settings):
     climate_year = settings.climate_year
-
-    data_path = settings.data_path /'capacity_factors'
+    data_path = settings.data_path / 'capacity_factors'
     cfs = {}
     if settings.validation:
-        cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore{str(2008)}.csv", index_col=0)
+        cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore2008.csv", index_col=0)
     else:
-        cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore{str(climate_year)}.csv", index_col=0)
-    cfs["onshore_wind"] = pd.read_csv(data_path / f"wind_onshore{str(climate_year)}.csv", index_col=0)
-    cfs["pv"] = pd.read_csv(data_path / f"pv{str(climate_year)}.csv", index_col=0)
+        cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore{climate_year}.csv", index_col=0)
+    cfs["onshore_wind"] = pd.read_csv(data_path / f"wind_onshore{climate_year}.csv", index_col=0)
+    cfs["pv"] = pd.read_csv(data_path / f"pv{climate_year}.csv", index_col=0)
 
-    for profile in cfs.keys():
-        for node in cfs[profile].columns:
-            climate_data = pd.read_csv(input_data_path / "period1" / "node_data" / node / "ClimateData.csv", sep=";", index_col=0)
-            climate_data[profile] = cfs[profile][node].to_numpy()[:len(climate_data)]
-            climate_data.to_csv(input_data_path / "period1" / "node_data" / node / "ClimateData.csv", sep=";")
+    weather_file = settings.data_path.parent / 'clean_data' / 'weather_data' / f"weather_{climate_year}.csv"
+    raw_weather = None
+    if weather_file.exists():
+        raw_weather = pd.read_csv(weather_file, index_col=0)
+    node_data_dir = Path(input_data_path) / "period1" / "node_data"
+
+    if not node_data_dir.exists():
+        return
+
+    for node_path in node_data_dir.iterdir():
+        if not node_path.is_dir():
+            continue
+
+        node = node_path.name
+        climate_csv = node_path / "ClimateData.csv"
+
+        if not climate_csv.exists():
+            continue
+        climate_data = pd.read_csv(climate_csv, sep=";", index_col=0)
+        for profile, df in cfs.items():
+            if node in df.columns:
+                climate_data[profile] = df[node].to_numpy()[:len(climate_data)]
+        if raw_weather is not None:
+            temp_col = f"{node}_temp"
+            rh_col = f"{node}_rh"
+            if temp_col in raw_weather.columns and rh_col in raw_weather.columns:
+                climate_data['temp_air'] = raw_weather[temp_col].to_numpy()[:len(climate_data)]
+                climate_data['rh'] = raw_weather[rh_col].to_numpy()[:len(climate_data)]
+        climate_data.to_csv(climate_csv, sep=";")
 
 def define_max_renewable_capacities(input_data_path, settings):
 

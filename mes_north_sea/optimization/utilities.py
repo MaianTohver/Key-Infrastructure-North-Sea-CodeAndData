@@ -189,7 +189,7 @@ def define_configuration(input_data_path, settings, save_path):
     configuration["optimization"]["monte_carlo"]["N"]["value"] = 0
     configuration["optimization"]["monte_carlo"]["sd"]["value"] = 0.5
     configuration["optimization"]["monte_carlo"]["on_what"]["value"] = ["Technologies", "Networks", "Import", "Export"]
-    configuration["optimization"].setdefault("ohmic_opex_cost", {})["value"] = 1e-3
+    configuration["optimization"].setdefault("ohmic_opex_cost", {})["value"] = 2.0
 
     configuration["solveroptions"]["solver"]["value"] = 'gurobi'
     configuration["solveroptions"]["mipgap"]["value"] = 0.02
@@ -197,7 +197,7 @@ def define_configuration(input_data_path, settings, save_path):
     configuration["solveroptions"]["numericfocus"]["value"] = 3
     configuration["solveroptions"]["timelim"]["value"] = 7
     configuration["solveroptions"]["method"]["value"] = 2
-    configuration["solveroptions"]["threads"]["value"] = 20
+    configuration["solveroptions"]["threads"]["value"] = 40
     configuration["solveroptions"]["crossover"] = {}
     configuration["solveroptions"]["crossover"]["value"] = 0
     configuration["solveroptions"]["nodemethod"] = {}
@@ -231,15 +231,13 @@ def define_node_locations(input_data_path, nodes):
 
 def define_installed_capacities(input_data_path, settings, nodes):
     data_path = settings.data_path
-    new_tecs = pd.read_csv(data_path /'installed_capacities/capacities_node.csv',
-                           index_col=0)
-    for node in nodes.onshore_nodes:
+    new_tecs = pd.read_csv(data_path /'installed_capacities/capacities_node.csv', index_col=0)
+    all_nodes = nodes.onshore_nodes + nodes.offshore_nodes
+    for node in all_nodes:
         with open(input_data_path / "period1" / "node_data" / node / "Technologies.json", "r") as json_file:
             technologies = json.load(json_file)
 
-        new_at_node = \
-            new_tecs[new_tecs['Node'] == node][['Technology', 'Capacity our work']].set_index('Technology').to_dict()[
-                'Capacity our work']
+        new_at_node = (new_tecs[new_tecs['Node'] == node].groupby('Technology')['Capacity our work'].sum().to_dict())
 
         if settings.model_h2:
             gas_plant = 'PowerPlant_Gas'
@@ -251,13 +249,15 @@ def define_installed_capacities(input_data_path, settings, nodes):
                         'PowerPlant_Nuclear': round(new_at_node.get('Nuclear', 0), 0),
                         'PowerPlant_Oil': round(new_at_node.get('Oil', 0), 0),
                         'PowerPlant_Coal': round(new_at_node.get('Coal & Lignite', 0), 0),
-                        'Storage_PumpedHydro_Closed': round(
-                            new_at_node.get('Hydro - Pump Storage Closed Loop (Energy)', 0),
-                            0),
-                        'Storage_PumpedHydro_Open': round(new_at_node.get('Hydro - Pump Storage Open Loop (Energy)', 0),
-                                                          0),
+                        'Storage_PumpedHydro_Closed': round(new_at_node.get('Hydro - Pump Storage Closed Loop (Energy)', 0),0),
+                        'Storage_PumpedHydro_Open': round(new_at_node.get('Hydro - Pump Storage Open Loop (Energy)', 0), 0),
                         'Storage_PumpedHydro_Reservoir': round(new_at_node.get('Hydro - Reservoir (Energy)', 0), 0),
                         }
+        if node in nodes.onshore_nodes:
+            tecs_at_node['PV'] = round(new_at_node.get('Solar', 0), 0)
+            tecs_at_node['Onshore_Wind'] = round(new_at_node.get('Wind Onshore', 0), 0)
+        if node in nodes.offshore_nodes:
+            tecs_at_node['Offshore_Wind'] = round(new_at_node.get('Wind Offshore', 0), 0)
 
         technologies["existing"] = {k: v for k, v in tecs_at_node.items() if v > 0}
 
@@ -621,44 +621,81 @@ def define_hydro_inflow(input_data_path, settings):
 
 
 def define_capacity_factors(input_data_path, settings):
-    climate_year = settings.climate_year
-    data_path = settings.data_path / 'capacity_factors'
-    cfs = {}
-    if settings.validation:
-        cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore2008.csv", index_col=0)
-    else:
-        cfs["offshore_wind"] = pd.read_csv(data_path / f"wind_offshore{climate_year}.csv", index_col=0)
-    cfs["onshore_wind"] = pd.read_csv(data_path / f"wind_onshore{climate_year}.csv", index_col=0)
-    cfs["pv"] = pd.read_csv(data_path / f"pv{climate_year}.csv", index_col=0)
+    from pathlib import Path
+    import pandas as pd
+    import numpy as np
 
-    weather_file = settings.data_path.parent / 'clean_data' / 'weather_data' / f"weather_{climate_year}.csv"
+    data_path = settings.data_path
+    cfs = {}
+    pv_file = data_path / "capacity_factors" / f"pv{settings.climate_year}.csv"
+    onshore_file = data_path / "capacity_factors" / f"wind_onshore{settings.climate_year}.csv"
+    offshore_file = data_path / "capacity_factors" / f"wind_offshore{settings.climate_year}.csv"
+
+    try:
+        cfs["pv"] = pd.read_csv(pv_file, index_col=0)
+    except FileNotFoundError:
+        pass
+    try:
+        cfs["onshore_wind"] = pd.read_csv(onshore_file, index_col=0)
+    except FileNotFoundError:
+        pass
+    try:
+        cfs["offshore_wind"] = pd.read_csv(offshore_file, index_col=0)
+    except FileNotFoundError:
+        pass
+
+    node_locations_file = input_data_path / "NodeLocations.csv"
+    node_locs = pd.read_csv(node_locations_file, sep=';', index_col=0)
+
+    def get_nearest_cf(node, cf_df):
+        if node not in node_locs.index:
+            return None
+        lon0, lat0 = node_locs.loc[node, 'lon'], node_locs.loc[node, 'lat']
+        available = [n for n in cf_df.columns if n in node_locs.index]
+        if not available:
+            return None
+        distances = {
+            n: (node_locs.loc[n, 'lon'] - lon0)**2 + (node_locs.loc[n, 'lat'] - lat0)**2
+            for n in available
+        }
+        nearest = min(distances, key=distances.get)
+        return cf_df[nearest]
+
     raw_weather = None
+    weather_file = data_path / "database" / "weather_data" / f"weather_{settings.climate_year}.csv"
     if weather_file.exists():
         raw_weather = pd.read_csv(weather_file, index_col=0)
-    node_data_dir = Path(input_data_path) / "period1" / "node_data"
 
+    node_data_dir = Path(input_data_path) / "period1" / "node_data"
     if not node_data_dir.exists():
         return
 
     for node_path in node_data_dir.iterdir():
         if not node_path.is_dir():
             continue
-
         node = node_path.name
         climate_csv = node_path / "ClimateData.csv"
-
         if not climate_csv.exists():
             continue
         climate_data = pd.read_csv(climate_csv, sep=";", index_col=0)
+
         for profile, df in cfs.items():
             if node in df.columns:
                 climate_data[profile] = df[node].to_numpy()[:len(climate_data)]
+            else:
+                nearest_cf = get_nearest_cf(node, df)
+                if nearest_cf is not None:
+                    climate_data[profile] = nearest_cf.to_numpy()[:len(climate_data)]
+                else:
+                    climate_data[profile] = 0.0
+
         if raw_weather is not None:
             temp_col = f"{node}_temp"
             rh_col = f"{node}_rh"
             if temp_col in raw_weather.columns and rh_col in raw_weather.columns:
                 climate_data['temp_air'] = raw_weather[temp_col].to_numpy()[:len(climate_data)]
                 climate_data['rh'] = raw_weather[rh_col].to_numpy()[:len(climate_data)]
+
         climate_data.to_csv(climate_csv, sep=";")
 
 def define_max_renewable_capacities(input_data_path, settings):

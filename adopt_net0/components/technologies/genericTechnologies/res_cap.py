@@ -2,9 +2,10 @@ from .res import Res
 import pandas as pd
 import numpy as np
 
+
 class Res_Cap(Res):
     def __init__(self,
-                tec_data):
+                 tec_data):
 
         self.climate_year = None
         self.node = None
@@ -14,7 +15,6 @@ class Res_Cap(Res):
     def fit_technology_performance(self, climate_data: pd.DataFrame, location: dict):
 
         time_independent = {}
-
         # Size
         time_independent["size_min"] = self.size_min
         if not self.existing:
@@ -22,15 +22,12 @@ class Res_Cap(Res):
         else:
             time_independent["size_max"] = self.size_initial
             time_independent["size_initial"] = self.size_initial
-
         # Emissions
         time_independent["emission_factor"] = self.performance_data["emission_factor"]
-
         # Other
         time_independent["rated_capacity"] = 1
         time_independent["min_part_load"] = 0
         time_independent["standby_power"] = -1
-
         # Dynamics
         dynamics = {}
         dynamics_parameter = [
@@ -55,12 +52,15 @@ class Res_Cap(Res):
         self.processed_coeff.dynamics = dynamics
 
         # read in data
-        if self.name == 'Offshore_Wind':
+        base_name = self.name.replace("_existing", "")
+        if base_name == 'Offshore_Wind':
             capacity_factor = climate_data["offshore_wind"].values
-        elif self.name == 'Onshore_Wind':
+        elif base_name == 'Onshore_Wind':
             capacity_factor = climate_data["onshore_wind"].values
-        elif self.name == 'PV':
+        elif base_name == 'PV':
             capacity_factor = climate_data["pv"].values
+        else:
+            raise ValueError(
+                f"Unknown RES_CAP technology: {self.name} (base: {base_name}). Expected one of: 'Offshore_Wind', 'Onshore_Wind', 'PV'")
 
         self.processed_coeff.time_dependent_full["capfactor"] = capacity_factor
-

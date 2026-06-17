@@ -245,26 +245,19 @@ def define_installed_capacities(input_data_path, settings, nodes):
             gas_plant = 'PowerPlant_Gas_noh2'
 
         tecs_at_node = {
-                        gas_plant: round(new_at_node.get('Gas', 0), 0),
-                        'PowerPlant_Nuclear': round(new_at_node.get('Nuclear', 0), 0),
-                        'PowerPlant_Oil': round(new_at_node.get('Oil', 0), 0),
-                        'PowerPlant_Coal': round(new_at_node.get('Coal & Lignite', 0), 0),
-                        'Storage_PumpedHydro_Closed': round(new_at_node.get('Hydro - Pump Storage Closed Loop (Energy)', 0),0),
-                        'Storage_PumpedHydro_Open': round(new_at_node.get('Hydro - Pump Storage Open Loop (Energy)', 0), 0),
-                        'Storage_PumpedHydro_Reservoir': round(new_at_node.get('Hydro - Reservoir (Energy)', 0), 0),
-                        }
-        if node in nodes.onshore_nodes:
-            tecs_at_node['PV'] = round(new_at_node.get('Solar', 0), 0)
-            tecs_at_node['Onshore_Wind'] = round(new_at_node.get('Wind Onshore', 0), 0)
-        if node in nodes.offshore_nodes:
-            tecs_at_node['Offshore_Wind'] = round(new_at_node.get('Wind Offshore', 0), 0)
+            gas_plant: round(new_at_node.get('Gas', 0), 0),
+            'PowerPlant_Nuclear': round(new_at_node.get('Nuclear', 0), 0),
+            'PowerPlant_Oil': round(new_at_node.get('Oil', 0), 0),
+            'PowerPlant_Coal': round(new_at_node.get('Coal & Lignite', 0), 0),
+            'Storage_PumpedHydro_Closed': round(new_at_node.get('Hydro - Pump Storage Closed Loop (Energy)', 0),0),
+            'Storage_PumpedHydro_Open': round(new_at_node.get('Hydro - Pump Storage Open Loop (Energy)', 0), 0),
+            'Storage_PumpedHydro_Reservoir': round(new_at_node.get('Hydro - Reservoir (Energy)', 0), 0),
+        }
 
         technologies["existing"] = {k: v for k, v in tecs_at_node.items() if v > 0}
 
         with open(input_data_path / "period1" / "node_data" / node / "Technologies.json", "w") as json_file:
             json.dump(technologies, json_file, indent=4)
-
-
 
 def define_new_technologies(input_data_path, settings, nodes):
 

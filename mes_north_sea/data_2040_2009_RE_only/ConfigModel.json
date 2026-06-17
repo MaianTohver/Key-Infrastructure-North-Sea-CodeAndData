@@ -87,6 +87,9 @@
                 1
             ],
             "value": 0
+        },
+        "ohmic_opex_cost": {
+            "value": 2.0
         }
     },
     "solveroptions": {
@@ -100,11 +103,11 @@
         },
         "timelim": {
             "description": "Value to define time limit in hours.",
-            "value": 168
+            "value": 7
         },
         "threads": {
             "description": "Value to define number of threads (default is maximum available).",
-            "value": 48
+            "value": 40
         },
         "mipfocus": {
             "description": "Modifies high level solution strategy.",
@@ -212,11 +215,11 @@
         },
         "save_summary_path": {
             "description": "Path to save the summary file path to.",
-            "value": "results/2040/"
+            "value": "/Users/maiant/PycharmProjects/Key-Infrastructure-North-Sea-CodeAndData/results/2040/"
         },
         "save_path": {
             "description": "Option to define the save path.",
-            "value": "results/2040/"
+            "value": "/Users/maiant/PycharmProjects/Key-Infrastructure-North-Sea-CodeAndData/results/2040/"
         },
         "case_name": {
             "description": "Option to define a case study name that is added to the results folder name.",

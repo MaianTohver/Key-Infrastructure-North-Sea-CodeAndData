@@ -662,7 +662,7 @@ def define_capacity_factors(input_data_path, settings):
         return cf_df[nearest]
 
     raw_weather = None
-    weather_file = data_path / "database" / "weather_data" / f"weather_{settings.climate_year}.csv"
+    weather_file = data_path / "weather_data" / f"weather_{settings.climate_year}.csv"
     if weather_file.exists():
         raw_weather = pd.read_csv(weather_file, index_col=0)
 

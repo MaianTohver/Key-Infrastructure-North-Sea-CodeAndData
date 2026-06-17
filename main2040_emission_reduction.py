@@ -9,9 +9,10 @@ import signal
 from multiprocessing import Pool, TimeoutError
 import os
 import copy
+import json
 
 # prevent infinite loops 8 hours
-job_timeout = 8 * 60 * 60
+job_timeout = 16 * 60 * 60
 
 test = 0
 settings = Settings(test=test)
@@ -30,7 +31,7 @@ neg_emission_cap = 5000000 #500,000 tco2/yr
 # emission_targets = [0.6, 0.4, 0.2] # 0.99, 0.98, 0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0
 # emission_targets.reverse()
 max_neg_by_cy = {1995: 50340843.62, 2008: 50340843.62, 2009: 50340843.62} # 1995: 50340843.62, 2008: 50340843.62, 2009: 50340843.62,
-neg_target_fracs = [0.2, 0.4, 0.6, 0.8, 1.0] # 0.2, 0.4, 0.6, 0.8, 1.0
+neg_target_fracs = [0.8, 1.0] # 0.2, 0.4, 0.6, 0.8, 1.0
 
 scenarios = {
     # 'Hydrogen_H2': 'Hydrogen (no hydrogen offshore)',
@@ -43,10 +44,10 @@ scenarios = {
     # 'ElectricityGrid_on': 'Grid Expansion (onshore only)',
     # 'ElectricityGrid_off': 'Grid Expansion (offshore only)',
     # 'ElectricityGrid_noBorder': 'Grid Expansion (no Border)',
-    #'RE_only': 'RE only',
-    'RE_only_no_space' : 'RE_only_no_space',
-    'Offshore_DAC_only': 'Offshore DAC only',
-    'Onshore_DAC_only': 'Onshore DAC only',
+     'RE_only': 'RE only',
+    #'RE_only_no_space' : 'RE_only_no_space',
+     'Offshore_DAC_only': 'Offshore DAC only',
+     'Onshore_DAC_only': 'Onshore DAC only',
     # 'Onshore_DAC_retrofits' : 'Onshore DAC retrofits',
     # 'Battery_on': 'Battery (onshore only)',
     # 'Battery_off': 'Battery (offshore only)',
@@ -89,20 +90,33 @@ def run_climate_year(args):
         define_installed_capacities(input_data_path, settings_local, nodes)
         define_new_technologies(input_data_path, settings_local, nodes)
         adopt.copy_technology_data(input_data_path, Path(settings_local.data_path / "technology_data"))
+        dac_size_max = 4000 if stage == 'RE_only' else 50000
+        for node in nodes.offshore_nodes + nodes.onshore_nodes:
+            for dac_name in ['DAC_Adsorption_offshore.json', 'DAC_Adsorption_onshore.json']:
+                dac_path = input_data_path / "period1" / "node_data" / str(node) / "technology_data" / dac_name
+                if dac_path.exists():
+                    with open(dac_path, "r") as f:
+                        dac_data = json.load(f)
+                    if stage == 'RE_only' and dac_name == 'DAC_Adsorption_offshore.json':
+                        dac_data["size_max"] = 4000
+                    else:
+                        dac_data["size_max"] = 50000
+                    with open(dac_path, "w") as f:
+                        json.dump(dac_data, f, indent=2)
         define_networks(input_data_path, settings_local)
         define_storage(input_data_path, settings_local, nodes)
         define_network_topology(input_data_path, settings_local, nodes)
         adopt.copy_network_data(input_data_path, Path(settings_local.data_path / "network_data"))
 
-        if stage == 'Onshore_DAC_retrofits':
-            import json
-            co2_pipe_path = input_data_path / "period1" / "network_data" / "CO2_Pipeline.json"
-            with open(co2_pipe_path, "r") as f:
-                co2_pipe_data = json.load(f)
-            co2_pipe_data["Economics"]["gamma4"] = 0
-            co2_pipe_data["Economics"]["opex_fixed"] = 0
-            with open(co2_pipe_path, "w") as f:
-                json.dump(co2_pipe_data, f, indent=2)
+        # if stage == 'Onshore_DAC_retrofits':
+        #     import json
+        #     co2_pipe_path = input_data_path / "period1" / "network_data" / "CO2_Pipeline.json"
+        #     with open(co2_pipe_path, "r") as f:
+        #         co2_pipe_data = json.load(f)
+        #     co2_pipe_data["Economics"]["gamma4"] = 0
+        #     co2_pipe_data["Economics"]["opex_fixed"] = 0
+        #     with open(co2_pipe_path, "w") as f:
+        #         json.dump(co2_pipe_data, f, indent=2)
 
         define_demand(input_data_path, settings_local, nodes)
         define_generic_production(input_data_path, settings_local, nodes)
@@ -125,30 +139,30 @@ def run_climate_year(args):
 
         os.environ["TMPDIR"] = "/scratch/8051917/tmp"
         os.makedirs("/scratch/8051917/tmp", exist_ok=True)
-        #local_scratch = os.path.join(Path(save_path).parent, "scratch")
-        #os.environ["TMPDIR"] = local_scratch
-        #os.makedirs(local_scratch, exist_ok=True)
+        # local_scratch = os.path.join(Path(save_path).parent, "scratch")
+        # os.environ["TMPDIR"] = local_scratch
+        # os.makedirs(local_scratch, exist_ok=True)
 
         m.construct_model()
         m.construct_balances()
         m._define_solver_settings()
 
-            # maximise negative emissions
-        for frac in neg_target_fracs:
-            neg_target = max_neg_by_cy[cy] * frac
-            m.data.model_config["optimization"].setdefault("neg_emission_limit", {})["value"] = neg_target
-            m.data.model_config["optimization"].setdefault("pos_emission_limit", {})["value"] = baseline_value
-            m.data.model_config["reporting"]["case_name"]["value"] = (
-                f"{stage}_minCost_neg{frac:.2f}_cy{cy}")
-            m._optimize_north_sea_dac()
+        #     # maximise negative emissions
+        # for frac in neg_target_fracs:
+        #     neg_target = max_neg_by_cy[cy] * frac
+        #     m.data.model_config["optimization"].setdefault("neg_emission_limit", {})["value"] = neg_target
+        #     m.data.model_config["optimization"].setdefault("pos_emission_limit", {})["value"] = baseline_value
+        #     m.data.model_config["reporting"]["case_name"]["value"] = (
+        #         f"{stage}_minCost_neg{frac:.2f}_cy{cy}")
+        #     m._optimize_north_sea_dac()
 
             # # Baseline
-            # m.data.model_config["reporting"]["case_name"]["value"] = stage + '_baseline_cy' + str(cy)
-            # m._optimize_cost()
-            # baseline_value = m.model[
-            #     m.info_solving_algorithms["aggregation_model"]
-            # ].var_emissions_net.value
-            # print(f"2040 baseline emissions: {baseline_value:.0f} tCO2")
+        m.data.model_config["reporting"]["case_name"]["value"] = stage + '_baseline_cy' + str(cy)
+        m._optimize_cost()
+        baseline_value = m.model[
+                m.info_solving_algorithms["aggregation_model"]
+            ].var_emissions_net.value
+        print(f"2040 baseline emissions: {baseline_value:.0f} tCO2")
 
             # # min emissions
             # m.data.model_config["reporting"]["case_name"]["value"] = stage + '_minE' + "_cy" + str(
@@ -193,7 +207,7 @@ def run_climate_year_with_timeout(args):
         except TimeoutError:
             raise
 
-n_parallel = 4  # number of parallel runs
+n_parallel = 2  # number of parallel runs
 
 if __name__ == '__main__':
     write_to_network_data(settings)

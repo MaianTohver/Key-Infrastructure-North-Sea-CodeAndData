@@ -1,4 +1,4 @@
-# Run of river, PV, Wind onshore, Wind offshore, Biomass
+
 import numpy as np
 import pandas as pd
 from types import SimpleNamespace

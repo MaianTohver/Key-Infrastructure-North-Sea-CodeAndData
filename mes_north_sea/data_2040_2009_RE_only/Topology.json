@@ -65,8 +65,8 @@
     "investment_periods": [
         "period1"
     ],
-    "start_date": "2041-05-01 00:00",
-    "end_date": "2041-05-01 01:00",
+    "start_date": "2041-01-05 06:00",
+    "end_date": "2041-01-05 10:00",
     "resolution": "1h",
     "investment_period_length": 1
 }

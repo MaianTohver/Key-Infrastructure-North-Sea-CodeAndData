@@ -13,16 +13,12 @@ import matplotlib.ticker as mticker
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-BASE_DIR = Path(
-    "/Users/maiant/PycharmProjects/Key-Infrastructure-North-Sea-CodeAndData"
-    "/results/2040/emission_reduction/cy1995"
-)
+BASE_DIR = Path("/Users/maiant/PycharmProjects/Key-Infrastructure-North-Sea-CodeAndData/results/2040/emission_reduction/RE_only/cy2009")
 
 SCENARIOS = {
-    "20250505122003_RE_only_minCost_E0.80_neg0.20_cy1995-1": 0.20,
-    "20260505083229_RE_only_minCost_E0.80_neg0.40_cy1995-1": 0.40,
-    "20260505102000_RE_only_minCost_E0.80_neg0.60_cy1995-1": 0.60,
-    "20260505122003_RE_only_minCost_E0.80_neg0.80_cy1995-1": 0.80,
+    "20260531094812_RE_only_minCost_neg0.20_cy2009-1": 0.20,
+    "20260531120208_RE_only_minCost_neg0.40_cy2009-1": 0.40,
+    "20260531142902_RE_only_minCost_neg0.60_cy2009-1": 0.60,
 }
 
 COST_COMPONENTS = {
@@ -47,8 +43,6 @@ SCALE = 1e9  # EUR → bn EUR
 OUTPUT_DIR = BASE_DIR / "plots"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-
-# ── Data extraction ───────────────────────────────────────────────────────────
 
 def load_scenario(folder: str) -> dict:
     h5_path = BASE_DIR / folder / "optimization_results.h5"
@@ -124,8 +118,8 @@ def main():
 
     plt.tight_layout()
 
-    out_pdf = OUTPUT_DIR / "cost_vs_neg_emission_target.pdf"
-    out_png = OUTPUT_DIR / "cost_vs_neg_emission_target.png"
+    out_pdf = OUTPUT_DIR / "cost_vs_neg_emission_target_baseline+space.pdf"
+    out_png = OUTPUT_DIR / "cost_vs_neg_emission_target_baseline+space.png"
     fig.savefig(out_pdf, bbox_inches="tight")
     fig.savefig(out_png, bbox_inches="tight", dpi=150)
     print(f"Saved: {out_pdf}")

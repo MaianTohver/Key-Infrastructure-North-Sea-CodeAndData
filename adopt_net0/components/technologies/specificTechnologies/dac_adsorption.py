@@ -330,14 +330,13 @@ class DacAdsorption(Technology):
 
         # If ohmic heating not allowed, set to zero
         if not ohmic_heating:
-
             def init_ohmic_heating(const, t):
                 return b_tec.var_input_ohmic[t] == 0
 
             b_tec.const_ohmic_heating = pyo.Constraint(
-                self.set_t_performance, rule=init_ohmic_heating
-            )
-
+                self.set_t_performance, rule=init_ohmic_heating)
+            for t in self.set_t_performance:
+                b_tec.var_input_ohmic[t].setub(0)
         return b_tec
 
     def _construct_linear_performance(self, b_tec):

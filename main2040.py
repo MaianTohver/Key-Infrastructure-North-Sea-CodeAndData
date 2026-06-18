@@ -7,7 +7,7 @@ settings = Settings(test=test)
 settings.demand_factor = 1
 settings.year = 2040
 settings.variable_h2_demand = 0
-cys = [1995, 2008, 2009]
+cys = [2009]
 co2_tax = [100]
 c_permutation = 0.01
 

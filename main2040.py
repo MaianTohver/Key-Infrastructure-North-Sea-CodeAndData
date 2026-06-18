@@ -2,7 +2,7 @@ import random
 from mes_north_sea.optimization.utilities import *
 from pathlib import Path
 
-test = 1
+test = 0
 settings = Settings(test=test)
 settings.demand_factor = 1
 settings.year = 2040
@@ -21,20 +21,20 @@ write_to_network_data(settings)
 write_to_technology_data(settings)
 
 scenarios = {
-    'Hydrogen_H2': 'Hydrogen (no hydrogen offshore)',
-    'Hydrogen_H1': 'Hydrogen (no storage)',
-    'Hydrogen_H4': 'Hydrogen (local use only)',
-    'Hydrogen_Baseline': 'Hydrogen (all)',
-    'All': 'All Pathways',
-    'Hydrogen_H3': 'Hydrogen (no hydrogen onshore)',
-    'ElectricityGrid_all': 'Grid Expansion (all)',
-    'ElectricityGrid_on': 'Grid Expansion (onshore only)',
-    'ElectricityGrid_off': 'Grid Expansion (offshore only)',
-    'ElectricityGrid_noBorder': 'Grid Expansion (no Border)',
+    #'Hydrogen_H2': 'Hydrogen (no hydrogen offshore)',
+    #'Hydrogen_H1': 'Hydrogen (no storage)',
+    #'Hydrogen_H4': 'Hydrogen (local use only)',
+    #'Hydrogen_Baseline': 'Hydrogen (all)',
+    #'All': 'All Pathways',
+    #'Hydrogen_H3': 'Hydrogen (no hydrogen onshore)',
+    #'ElectricityGrid_all': 'Grid Expansion (all)',
+    #'ElectricityGrid_on': 'Grid Expansion (onshore only)',
+    #'ElectricityGrid_off': 'Grid Expansion (offshore only)',
+    #'ElectricityGrid_noBorder': 'Grid Expansion (no Border)',
     'RE_only': 'RE only',
-    'Battery_on': 'Battery (onshore only)',
-    'Battery_off': 'Battery (offshore only)',
-    'Battery_all': 'Battery (all)',
+    #'Battery_on': 'Battery (onshore only)',
+    #'Battery_off': 'Battery (offshore only)',
+    #'Battery_all': 'Battery (all)',
              }
 
 for stage in scenarios.keys():
